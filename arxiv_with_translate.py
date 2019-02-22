@@ -2,6 +2,7 @@
 import os,time
 from selenium import webdriver
 from tools import *
+from mail import Email
 
 def get_arxiv_recent_domain_papers(driver, domains=['cs.CV'], \
                                    trans2zh_CN=False, \
@@ -21,8 +22,9 @@ def get_arxiv_recent_domain_papers(driver, domains=['cs.CV'], \
         driver.get(current_domain_link)
 
         # click "all" button to view recent 5 days' all papers
-        time.sleep(1)
+        time.sleep(30)
         driver.find_element_by_css_selector('#dlpage > small:nth-child(6) > a:nth-child(3)').click()
+        
         time.sleep(wait_time)
         recent_dates = driver.find_elements_by_tag_name('h3') # obtain recent dates
         per_date_paper_blocks = driver.find_elements_by_tag_name('dl') # obtain per date's paper blocks
@@ -62,69 +64,170 @@ def get_abstract(driver, recent_papers, domains=['cs.CV','cs.AI'], trans2zh_CN=F
         print(domain)
         papers = recent_papers[domain]
         for i,paper in enumerate(papers):
-            print(i)
+            print(i,paper['title'])
             paper_url = paper['url']
             driver.get(paper_url)
-            abstract = driver.find_element_by_css_selector('#abs > div.leftcolumn > blockquote').text
+
+            try:
+                abstract = driver.find_element_by_css_selector('#abs > div.leftcolumn > blockquote').text
+            except:
+                print(paper_url)
+                driver.get(paper_url)
+                time.sleep(30)
+                abstract = driver.find_element_by_css_selector('#abs > div.leftcolumn > blockquote').text
+
             abstract.replace('\t',' ')
             paper['abstract'] = abstract
             if trans2zh_CN:
                 print('translating abstract...')
-                abstract_CN = translate_google(abstract)
-                # abstract_CN = translate(abstract)
-                abstract_CN.replace('\t','')
-                paper['abstract_zh_CN'] = abstract_CN
+                try:
+                    abstract_CN = translate_google(abstract, cn_host=False)
+                    # abstract_CN = translate(abstract)
+                    abstract_CN.replace('\t','')
+                    paper['abstract_zh_CN'] = abstract_CN
+                except:
+                    paper['abstract_zh_CN'] = ''
+
+                # translate title
+                print('translating title...')
+                try:
+                    title_CN = translate_google(paper['title'], cn_host=False)
+                    # title_CN = translate(paper['title'])
+                    paper['title_CN'] = title_CN
+                except:
+                    paper['title_CN'] = ''
+
     return recent_papers
 
-def write_recent_papers2file(recent_papers,save_file='./save.txt', abstract=True,trans2zh_CN=False):
-    file = open(save_file,'w',encoding='utf-8')
+def write_recent_papers2file(recent_papers,save_file='./save.txt', abstract=True,trans2zh_CN=False,days_to_get=1):
+    finall_string = ''
     domains = list(recent_papers.keys())
-    file.write('############################################\n')
-    file.write('# arXiv papers updated in past 5 days\n')
-    file.write('# {}\n'.format(time.strftime("%Y.%m.%d", time.localtime())))
-    file.write('# Domains:{}\n'.format(domains))
-    file.write('############################################\n')
+    #finall_string += ('##############################\n')
+    finall_string += (' arXiv papers updated in the past {} day(s)\n'.format(days_to_get))
+    finall_string += (' {}\n'.format(time.strftime("%Y.%m.%d", time.localtime())))
+    finall_string += (' Domains:{}\n'.format(domains))
+    finall_string += ('###############################\n')
     for domain in domains:
         print('saving {}...'.format(domain))
-        file.write('Papers in [{}]:\n'.format(domain))
+        finall_string += ('Papers in [{}]:\n'.format(domain))
         papers = recent_papers[domain]
         for i,paper in enumerate(papers):
-            file.write('【{}】{}\n\n'.format(i, paper['title']))
-            file.write('{}\n'.format(paper['date']))
-            file.write('[作者]:{}\n'.format(paper['authors']))
+            finall_string += ('【{}】{}\n\n'.format(i, paper['title']))
+            if trans2zh_CN:
+                finall_string += '{}\n'.format(paper['title_CN'])
+            finall_string += ('日期：{}\n'.format(paper['date']))
+            finall_string += ('作者：{}\n'.format(paper['authors']))
             if abstract:
-                file.write('[摘要]:{}\n\n'.format(paper['abstract']))
+                finall_string += ('摘要：\n{}\n\n'.format(paper['abstract']))
                 if trans2zh_CN:
-                    file.write('[摘要]：{}\n\n'.format(paper['abstract_zh_CN']))
+                    finall_string += ('摘要：\n{}\n\n'.format(paper['abstract_zh_CN']))
+            finall_string += ('arXiv:{}\n'.format(paper['url']))
 
+    file = open(save_file,'w',encoding='utf-8')
+    file.write(finall_string)
     print('saving done.')
 
+def edit_recent_papers2mail(recent_papers,save_file='./save2mail.txt', abstract=True,trans2zh_CN=False,days_to_get=1):
+    finall_string = ''
+    domains = list(recent_papers.keys())
+    date = time.strftime("%m.%d", time.localtime())
+    # finall_string += ('##############################\n')
+    finall_string += (' [{}]计算机视觉/人工智能方向论文速递\n'.format(date))
+    # finall_string += (' {}\n'.format(time.strftime("%Y.%m.%d", time.localtime())))
+    # finall_string += (' {}\n'.format(time.strftime("%Y.%m.%d", time.localtime())))
+    finall_string += ('翻译：谷歌翻译\n')
+    # finall_string += (' 论文方向:{}\n'.format(domains))
+    # finall_string += ('----------------------------------------------\n')
+    for domain in domains:
+        print('processing {}...'.format(domain))
+        papers = recent_papers[domain]
+        finall_string += ('{} 方向，共计{}篇\n'.format(domain, len(papers)))
+    
+    for domain in domains:
+        papers = recent_papers[domain]
+        finall_string += ('\n[{}]：\n'.format(domain, len(papers)))
+
+        for i,paper in enumerate(papers):
+            finall_string += ('【{}】{}\n'.format(i+1, paper['title']))
+            if trans2zh_CN:
+                finall_string += '{}\n'.format(paper['title_CN'])
+
+    finall_string += ('\n--------------------------------------------\n')
+    finall_string += ('论文摘要等详细信息:\n')
+    for domain in domains:
+        print('processing {}...'.format(domain))
+
+        papers = recent_papers[domain]
+        finall_string += ('{} 方向，共计{}篇：\n'.format(domain, len(papers)))
+
+        for i,paper in enumerate(papers):
+            finall_string += ('【{}】{}\n'.format(i+1, paper['title']))
+            if trans2zh_CN:
+                finall_string += '{}\n'.format(paper['title_CN'])
+            # finall_string += ('日期：{}\n'.format(paper['date']))
+            finall_string += ('作者：{}\n'.format(paper['authors']))
+            if abstract:
+                finall_string += ('摘要：{}\n'.format(paper['abstract']))
+                if trans2zh_CN:
+                    finall_string += ('摘要：{}\n'.format(paper['abstract_zh_CN']))
+            
+            finall_string += ('arXiv:{}\n'.format(paper['url']))
+            finall_string += ('--------------------------------------------\n')
+
+    file = open(save_file,'w',encoding='utf-8')
+    file.write(finall_string)
+    print('saving done.')
+
+    return finall_string
 
 
 
 
 if __name__ == '__main__':
-    options = webdriver.ChromeOptions()
-    options.add_argument('headless')
-    driver = webdriver.Chrome('C:\ProgramData\Anaconda3\Scripts\chromedriver.exe', options=options)
+    while(1):
+        date = time.strftime("%m.%d", time.localtime())
+        ret = False
+        try:
+            options = webdriver.ChromeOptions()
+            options.add_argument('headless')
+            driver = webdriver.Chrome('C:\ProgramData\Anaconda3\Scripts\chromedriver.exe', options=options)
 
-    try_time = 0
+            # obtain papers
+            domains = ['cs.CV','cs.AI']
+            days_to_get = 1 # get how many days' paper only support [1-5]
+            cn_url = False # if use CN link i.e http://cn.arxiv.org
+            abstract = True
+            trans2zh_CN = True # translate abstract
 
-    # obtain papers
-    domains = ['cs.CV','cs.AI']
-    days_to_get = 1 # get how many days' paper only support [1-5]
-    cn_url = False # if use CN link i.e http://cn.arxiv.org
-    abstract = True
-    trans2zh_CN = True # translate abstract
-    recent_papers = get_arxiv_recent_domain_papers(driver, domains=domains, \
-                                                   trans2zh_CN=trans2zh_CN,\
-                                                   wait_time=10,cn_url=cn_url,abstract=abstract,\
-                                                   days_to_get=days_to_get)
+            recent_papers = get_arxiv_recent_domain_papers(driver, domains=domains, \
+                                                        trans2zh_CN=trans2zh_CN,\
+                                                        wait_time=10,cn_url=cn_url,abstract=abstract,\
+                                                        days_to_get=days_to_get)
+            driver.quit()
 
-    # save to file
-    current_date_time = time.strftime("%Y_%m_%d_%Hh%mmin", time.localtime())
-    save_file = 'recent_arxiv_papers_{}.txt'.format(current_date_time)
-    write_recent_papers2file(recent_papers, save_file=save_file, abstract=abstract,trans2zh_CN=trans2zh_CN)
-    print('all done')
-    driver.quit()
+            # save to file
+            current_date_time = time.strftime("%Y_%m_%d_%Hh%mmin", time.localtime())
+            if not os.path.exists('./papers'):
+                os.makedirs('./papers')
+            save_file = './papers/recent_arxiv_papers_{}.txt'.format(current_date_time)
+            write_recent_papers2file(recent_papers, save_file=save_file, abstract=abstract,trans2zh_CN=trans2zh_CN, days_to_get=days_to_get)
+            
+            # Email to me everyday
+            paper_info = edit_recent_papers2mail(recent_papers, abstract=abstract,trans2zh_CN=trans2zh_CN, days_to_get=days_to_get)    
+            qq_email = Email('@qq.com','jevcecdnbwzlbfah')
+            qq_email.send_mail('@163.com',mail_subject='Arxiv每日论文速递',mail_content=paper_info)
+            qq_email.send_mail('@.com',mail_subject='Arxiv每日论文速递',mail_content=paper_info)
+
+            print('{} all done'.format(date))
+            ret = True
+        except:
+            ret = False
+            time.sleep(30)
+        
+        if ret == True:
+            time.sleep(86400)
+            ret = False
+
+
+
 
