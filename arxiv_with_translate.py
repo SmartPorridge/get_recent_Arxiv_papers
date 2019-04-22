@@ -134,25 +134,25 @@ def edit_recent_papers2mail(recent_papers,save_file='./save2mail.txt', abstract=
     domains = list(recent_papers.keys())
     date = time.strftime("%m.%d", time.localtime())
     # finall_string += ('##############################\n')
-    finall_string += ('计算机视觉/人工智能论文速递[{}]\n'.format(date))
+    finall_string += ('计算机视觉/人工智能每日论文速递[{}]\n'.format(date))
     # finall_string += (' {}\n'.format(time.strftime("%Y.%m.%d", time.localtime())))
     # finall_string += (' {}\n'.format(time.strftime("%Y.%m.%d", time.localtime())))
     # finall_string += (' 论文方向:{}\n'.format(domains))
     # finall_string += ('----------------------------------------------\n')
     for domain in domains:
         papers = recent_papers[domain]
-        finall_string += ('{} 方向，共计{}篇\n'.format(domain, len(papers)))
+        finall_string += ('{} 方向，今日共计{}篇\n'.format(domain, len(papers)))
     
     for domain in domains:
         papers = recent_papers[domain]
-        finall_string += ('\n[{}]：\n'.format(domain, len(papers)))
+        finall_string += (' \n[{}]：\n'.format(domain, len(papers)))
 
         for i,paper in enumerate(papers):
             finall_string += ('【{}】{}\n'.format(i+1, paper['title']))
             if trans2zh_CN:
-                finall_string += '{}\n'.format(paper['title_CN'])
+                finall_string += '标题：{}\n'.format(paper['title_CN'])
             finall_string += ('作者：{}\n'.format(paper['authors']))
-            finall_string += ('地址：{}\n\n'.format(paper['url']))
+            finall_string += ('地址：{}\n \n '.format(paper['url']))
     finall_string += ('\n翻译：谷歌翻译\n')
     
     if abstract:
@@ -191,7 +191,7 @@ def edit_recent_papers2mail_per_domain(domain, recent_papers,save_file='./save2m
     date = time.strftime("%m.%d", time.localtime())
     finall_string += ('{}每日论文速递[{}]\n'.format(domain_CN,date))
     papers = recent_papers[domain]
-    finall_string += ('{} 方向，共计{}篇\n'.format(domain, len(papers)))
+    finall_string += ('{} 方向，今日共计{}篇\n'.format(domain, len(papers)))
 
     for i,paper in enumerate(papers):
         finall_string += ('【{}】{}\n'.format(i+1, paper['title']))
@@ -202,8 +202,8 @@ def edit_recent_papers2mail_per_domain(domain, recent_papers,save_file='./save2m
     
     #     finall_string += ('--------------------------------------------\n')
     finall_string += ('翻译：谷歌翻译\n')
-    finall_string += ('--------------------------------------------\n')
-    finall_string += ('随手点赞，手有余香(￣▽￣)"')
+    # finall_string += ('--------------------------------------------\n')
+    # finall_string += ('随手点赞，手有余香(￣▽￣)"')
 
     # file = open(save_file,'w',encoding='utf-8')
     # file.write(finall_string)
@@ -262,6 +262,7 @@ if __name__ == '__main__':
             driver = webdriver.Chrome('C:\ProgramData\Anaconda3\Scripts\chromedriver.exe', options=options)
 
             # obtain papers
+            # domains = ['cs.CV','cs.AI','cs.LG']
             domains = ['cs.CV','cs.AI']
             days_to_get = 1 # get how many days' paper only support [1-5]
             cn_url = False # if use CN link i.e http://cn.arxiv.org
@@ -306,28 +307,31 @@ if __name__ == '__main__':
                         '@.com']
                     receiver_mail_list2 = ['@163.com',\
                         '@.com']
-                    qq_email = Email('@qq.com','授权码')
-                    # qq_email.send_mail(receiver_mail_list, mail_subject='[{}]计算机视觉/人工智能每日论文速递(含摘要及翻译)'.format(date_m_d),mail_content=paper_info)
-                    qq_email.send_mail(receiver_mail_list2, mail_subject='[{}]计算机视觉/人工智能每日论文速递'.format(date_m_d),mail_content=paper_info_with_No_abstract)
+                    qq_email = Email('@qq.com','')
+                    # qq_email.send_mail(receiver_mail_list, mail_subject='计算机视觉/人工智能每日论文速递[{}](含摘要及翻译)'.format(date_m_d),mail_content=paper_info)
+                    qq_email.send_mail(receiver_mail_list2, mail_subject='计算机视觉/人工智能每日论文速递[{}]'.format(date_m_d),mail_content=paper_info_with_No_abstract)
                     # qq_email.send_mail(receiver_mail_list2, mail_subject='(总{})Arxiv每日论文速递(含英文摘要)'.format(date_m_d),mail_content=paper_info_with_No_CN_Abstract)
                     
                     # edit for weibo and toutiao
                     for domain in domains:
+                        print(domain)
                         if domain == 'cs.CV':
                             domain_CN = '计算机视觉'
                         elif domain == 'cs.AI':
                             domain_CN = '人工智能'
+                        elif domain == 'cs.LG':
+                            domain_CN = '机器学习'
                         else:
                             domain_CN = domain
-
                         domain_paper_info = edit_recent_papers2mail_per_domain(domain, recent_papers, abstract=abstract,trans2zh_CN=trans2zh_CN, days_to_get=days_to_get)   
                         domain_paper_info_with_abstract = edit_recent_papers2mail_per_domain_with_abstract(domain, recent_papers, abstract=abstract,trans2zh_CN=trans2zh_CN, days_to_get=days_to_get) 
                         
-                        
+                        #receiver_mail_list = ['@.com','@.com']
                         receiver_mail_list = ['@163.com']
-                        qq_email = Email('@qq.com','授权码')
+                        # receiver_mail_list = ['@163.com']
+                        qq_email = Email('@qq.com','')
 
-                        # qq_email.send_mail(receiver_mail_list, mail_subject='[{}]{}论文速递'.format(date_m_d, domain_CN),mail_content=domain_paper_info)
+                        qq_email.send_mail(receiver_mail_list, mail_subject='[{}]{}论文速递'.format(date_m_d, domain_CN),mail_content=domain_paper_info)
                         # qq_email.send_mail(receiver_mail_list, mail_subject='[{}]{}论文速递(附摘要及翻译)'.format(date_m_d, domain_CN),mail_content=domain_paper_info_with_abstract)
 
             print('{} all done'.format(date))
