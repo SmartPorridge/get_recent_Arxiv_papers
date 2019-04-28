@@ -70,9 +70,9 @@ sudo apt-get install python3-pil
 
 # 三.修改配置
 
-## 修改arxiv_with_translate.py中的收件人邮箱和发件人的qq邮箱
+修改arxiv_with_translate.py中的收件人邮箱和发件人的qq邮箱
 
-## 执行 python3 arxiv_with_translate.py即可
+执行 python3 arxiv_with_translate.py即可
 
 
 
