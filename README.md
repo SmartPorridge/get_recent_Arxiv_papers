@@ -1,5 +1,8 @@
-# get_recent_arXiv_papers
-need update
+# GetRecentArxivPapers 
+
+## 软硬件要求
+
+### 1.机器内存1GB及以上  2.Ubuntu  3.Python3
 
 # 一.安装 firefox及selenium环境
 
